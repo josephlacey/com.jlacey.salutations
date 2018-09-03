@@ -43,17 +43,17 @@ function salutations_civicrm_postInstall() {
   $salutation_table = $salutation_custom_group['table_name'];
 
   //Migrate Email Greetings
-  $email_greeting_migration_sql = "INSERT INTO $salutation_table (entity_id, salutation_type, salutation_email_greeting, salutation) 
+  $email_greeting_migration_sql = "INSERT INTO $salutation_table (entity_id, salutation_type, salutation_postal_greeting, salutation)
                                         SELECT id, 'salutation_email_greeting', email_greeting_id, email_greeting_display FROM civicrm_contact";
   $email_greeting_migration = CRM_Core_DAO::executeQuery($email_greeting_migration_sql);
 
   //Migration Postal Greetings
-  $postal_greeting_migration_sql = "INSERT INTO $salutation_table (entity_id, salutation_type, salutation_postal_greeting, salutation) 
+  $postal_greeting_migration_sql = "INSERT INTO $salutation_table (entity_id, salutation_type, salutation_postal_greeting, salutation)
                                          SELECT id, 'salutation_postal_greeting', postal_greeting_id, postal_greeting_display FROM civicrm_contact";
   $postal_greeting_migration = CRM_Core_DAO::executeQuery($postal_greeting_migration_sql);
 
   //Migrating Addressees
-  $addressee_migration_sql = "INSERT INTO $salutation_table (entity_id, salutation_type, salutation_addressee, salutation) 
+  $addressee_migration_sql = "INSERT INTO $salutation_table (entity_id, salutation_type, salutation_addressee, salutation)
                                    SELECT id, 'salutation_addressee', addressee_id, addressee_display FROM civicrm_contact";
   $addressee_migration = CRM_Core_DAO::executeQuery($addressee_migration_sql);
 }
@@ -190,7 +190,7 @@ function salutations_civicrm_pageRun( &$page ) {
 function salutations_civicrm_fieldOptions($entity, $field, &$options, $params) {
   if ($entity == 'Contact') {
     //Declare core greeting type to include options
-    $core_greeting_types = array("email_greeting", "postal_greeting", "addressee");
+    $core_greeting_types = array("postal_greeting", "addressee");
     
     //Grab custom salutation fields
     $salutation_fields =  civicrm_api3('CustomField', 'get', ['return' => ["name"], 'custom_group_id' => "salutations",]);

@@ -33,25 +33,8 @@
       <custom_group_name>salutations</custom_group_name>
     </CustomField>
     <CustomField>
-      <name>salutation_email_greeting</name>
-      <label>Email Greeting</label>
-      <data_type>String</data_type>
-      <html_type>Select</html_type>
-      <is_required>0</is_required>
-      <is_searchable>0</is_searchable>
-      <is_search_range>0</is_search_range>
-      <weight>2</weight>
-      <is_active>1</is_active>
-      <is_view>0</is_view>
-      <text_length>255</text_length>
-      <column_name>salutation_email_greeting</column_name>
-      <in_selector>0</in_selector>
-      <option_group_name>salutation_email_greeting_options</option_group_name>
-      <custom_group_name>salutations</custom_group_name>
-    </CustomField>
-    <CustomField>
       <name>salutation_postal_greeting</name>
-      <label>Postal Greeting</label>
+      <label>Greeting</label>
       <data_type>String</data_type>
       <html_type>Select</html_type>
       <is_required>0</is_required>
@@ -108,14 +91,8 @@
       <is_active>1</is_active>
     </OptionGroup>
     <OptionGroup>
-      <name>salutation_email_greeting_options</name>
-      <title>Salutation Email Greetings</title>
-      <is_reserved>1</is_reserved>
-      <is_active>1</is_active>
-    </OptionGroup>
-    <OptionGroup>
       <name>salutation_postal_greeting_options</name>
-      <title>Salutation Postal Greetings</title>
+      <title>Salutation Greetings</title>
       <is_reserved>1</is_reserved>
       <is_active>1</is_active>
     </OptionGroup>

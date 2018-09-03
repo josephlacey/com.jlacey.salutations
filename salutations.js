@@ -18,36 +18,55 @@
  */
 function salutation_type (fieldId){
   //Process the selected option
-  //This requires the that value in the salutation type options 
-  //match the custom field value of the corresponding option list
-  if (selectedGreeting = CRM.$("select[id*='custom_" + fieldId + "'] option:selected").val()) {
+  //Addressee
+  if (CRM.$("select[id*='custom_" + fieldId + "'] option:selected").val() == 'salutation_addressee') {
     CRM.api3('CustomField', 'getsingle', {
       "return": ["id"],
-      "name": selectedGreeting
+      "name": 'salutation_addressee'
     }).done(function(selectedGreetingField) {
-      //Show salutation options
+      //Hide greeting options
+      CRM.api3('CustomField', 'getsingle', {
+        "return": ["id"],
+        "name": 'salutation_postal_greeting'
+      }).done(function(unselectedGreetingField) {
+        CRM.$("tr[class*='custom_" + unselectedGreetingField.id + "']").hide();
+      });
+      //Show addressee options
       CRM.$("tr[class*='custom_" + selectedGreetingField.id + "']").show();
 
       //Generate the selected option
       //Page Load
-      process_salutation(CRM.$(this).children('option:selected').text());
+      process_salutation(CRM.$("select[id*='custom_" + selectedGreetingField.id + "']").children('option:selected').text());
+      //When the salutation option changes
+      CRM.$("select[id*='custom_" + selectedGreetingField.id + "']").change(function() {
+        process_salutation(CRM.$(this).children('option:selected').text());
+      });
+    });
+  //Other greetings
+  } else {
+    CRM.api3('CustomField', 'getsingle', {
+      "return": ["id"],
+      "name": 'salutation_postal_greeting'
+    }).done(function(selectedGreetingField) {
+      //Hide addressee options
+      CRM.api3('CustomField', 'getsingle', {
+        "return": ["id"],
+        "name": 'salutation_addressee'
+      }).done(function(unselectedGreetingField) {
+        CRM.$("tr[class*='custom_" + unselectedGreetingField.id + "']").hide();
+      });
+      //Show greeting options
+      CRM.$("tr[class*='custom_" + selectedGreetingField.id + "']").show();
+
+      //Generate the selected option
+      //Page Load
+      process_salutation(CRM.$("select[id*='custom_" + selectedGreetingField.id + "']").children('option:selected').text());
       //When the salutation option changes
       CRM.$("select[id*='custom_" + selectedGreetingField.id + "']").change(function() {
         process_salutation(CRM.$(this).children('option:selected').text());
       });
     });
   }
-  //Hide the salutation options for non-selected types
-  CRM.$("select[id*='custom_" + fieldId + "'] option:not(:selected)").each(function() {
-    if (CRM.$(this).val().length > 0) {
-      CRM.api3('CustomField', 'getsingle', {
-        "return": ["id"],
-        "name": CRM.$(this).val()
-      }).done(function(unselectedGreetingField) {
-        CRM.$("tr[class*='custom_" + unselectedGreetingField.id + "']").hide();
-      });
-    }
-  });
 }
 
 /*
