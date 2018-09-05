@@ -221,11 +221,12 @@ function salutations_civicrm_tokens( &$tokens ) {
     'return' => ["name", "label"],
     'custom_group_id' => "salutations",
     'html_type' => "Select",
-    'option_group_id' => ['!=' => "salutation_type_options"],
     'is_active' => 1,
   ]);
   foreach($salutation_fields['values'] as $salutation_field) {
-    $tokens['contact']['contact.' . strtolower($salutation_field['name'])] = $salutation_field['label'];
+    if ($salutation_field['name'] != 'salutation_type') {
+      $tokens['contact']['contact.' . strtolower($salutation_field['name'])] = $salutation_field['label'];
+    }
   }
 }
 
@@ -251,12 +252,13 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
     'return' => ["name", "id"],
     'custom_group_id' => "salutations",
     'html_type' => "Select",
-    'option_group_id' => ['!=' => "salutation_type_options"],
     'is_active' => 1,
   ]);
   //and set the different type options for look up
   foreach($salutation_fields['values'] as $salutation_field) {
-    $salutations[$salutation_field['id']] = strtolower($salutation_field['name']);
+    if ($salutation_field['name'] != 'salutation_type') {
+      $salutations[$salutation_field['id']] = strtolower($salutation_field['name']);
+    }
   }
 
   //Processed the different type options for each contact
