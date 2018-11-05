@@ -32,6 +32,7 @@ function civicrm_api3_salutation_Process($params) {
     $contactDetails = civicrm_api3('Contact', 'getsingle', ['id' => "$contactID",]);
 
     CRM_Contact_BAO_Contact_Utils::processGreetingTemplate($greetingString, $contactDetails, $contactID, 'CRM_UpdateGreeting');
+    $greetingString = trim(str_replace('  ', ' ', $greetingString));
 
     if ($greetingString != $params['greetingString']) {
       $returnValues['greeting'] = $greetingString;
