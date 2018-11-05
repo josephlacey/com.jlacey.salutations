@@ -341,14 +341,17 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
       $salutation["contact.salutation_$salutation_name"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
       $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
 
-      //If the salutation fields is a core one, set the core greeting token
-      /*
-      if (in_array(substr($salutation_name,11), $core_greeting_types)) {
-        $core_greeting = substr($salutation_type,11);
-        $salutation["contact.$core_greeting"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
-        $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
+      //If the salutation fields has a corollary core one, set the core greeting token
+      foreach ($core_greeting_types as $core_greeting) {
+        if (FALSE !== (stristr($core_greeting, $salutation_name))) {
+          $values[$cid]["$core_greeting"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+          $values[$cid]["$core_greeting" . "_display"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+          if (isset($values[$cid]["$core_greeting". "_custom"])) {
+            $values[$cid]["$core_greeting" . "_custom"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+          }
+        }
       }
-      */
     }
+    $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
   }
 }
