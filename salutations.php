@@ -163,16 +163,18 @@ function salutations_civicrm_entityTypes(&$entityTypes) {
  */
 function salutations_civicrm_buildForm($formName, &$form) {
   if ($formName == 'CRM_Contact_Form_CustomData') {
-    CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'salutations.js');
+    CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/salutations.js');
   }
   if ($formName == 'CRM_Contact_Form_Contact' ||
       $formName == 'CRM_Contact_Form_Inline_CommunicationPreferences') {
-    CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'hide-core-greetings.js');
+    CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/hide-core-greetings.js');
   }
 }
 
 /**
  * Implements hook_civicrm_postProcess().
+ *
+ * This updates a contact's salutations after record update
  *
  * @param string $formName
  * @param CRM_Core_Form $form
@@ -220,6 +222,11 @@ function salutations_civicrm_postProcess($formName, &$form) {
   }
 }
 
+/*
+ * Retrieve the tokenized greeting string
+ *
+ * Helper function for salutation updates after contact updates
+ */
 function salutation_greeting_string($type, $option) {
   $greeting_string = civicrm_api3('OptionValue', 'get', [
     'sequential' => 1,
@@ -232,6 +239,11 @@ function salutation_greeting_string($type, $option) {
 
 }
 
+/*
+ * Update the salutation value
+ *
+ * Helper function for salutation updates after contact updates
+ */
 function salutation_greeting_update($contact_id, $salutation_id, $salutation) {
   $contactEdUpdate = civicrm_api3('CustomValue', 'create', array(
     'entity_id' => $contact_id,
@@ -246,7 +258,12 @@ function salutation_greeting_update($contact_id, $salutation_id, $salutation) {
  */
 function salutations_civicrm_pageRun( &$page ) {
   if (get_class($page) == 'CRM_Contact_Page_View_Summary') {
-    CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'hide-core-greetings.js');
+    CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/hide-core-greetings.js');
+  }
+  if (get_class($page) == 'CRM_Contact_Page_View_CustomData') {
+    if (CRM_Core_BAO_CustomGroup::getTitle($page->_groupId) == 'Salutations') {
+      CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/ui-clean-up.js');
+    }
   }
 }
 

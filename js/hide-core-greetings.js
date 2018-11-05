@@ -1,4 +1,9 @@
 (function ($) {
+  //TODO We're making a lot of assumptions here.
+  //If someone's move these around or 
+  //is using the Contact Summary screen editor, 
+  //these might not work
+
   //Contact summary screen
   CRM.$('#crm-container .contact_details #crm-communication-pref-content .crm-inline-block-content .crm-summary-row:nth-child(7)').hide();
   CRM.$('#crm-container .contact_details #crm-communication-pref-content .crm-inline-block-content .crm-summary-row:nth-child(8)').hide();
