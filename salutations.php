@@ -318,8 +318,12 @@ function salutations_civicrm_fieldOptions($entity, $field, &$options, $params) {
         array_key_exists($field_id, $salutation_fields['values']) &&
         in_array(substr($salutation_fields['values'][$field_id]['name'],11), $core_greeting_types)) {
       $salutation_field = $salutation_fields['values'][$field_id];
-      $filterCondition = array('greeting_type' => substr($salutation_field['name'], 11));
-      //FIXME need to add contact type to filter condition
+      $filterCondition = array();
+      if (isset($_GET['entityID'])) {
+        $contact_id = (int) $_GET['entityID'];
+        $filterCondition['contact_type'] = civicrm_api3('Contact', 'getvalue', ['return' => "contact_type",'id' => $contact_id,]);
+      }
+      $filterCondition['greeting_type'] = substr($salutation_field['name'], 11);
       $options = CRM_Core_PseudoConstant::greeting($filterCondition);
     }
   }
