@@ -172,6 +172,32 @@ function salutations_civicrm_buildForm($formName, &$form) {
 }
 
 /**
+ * Implements hook_civicrm_validateForm().
+ *
+ * @param string $formName
+ * @param array $fields
+ * @param array $files
+ * @param CRM_Core_Form $form
+ * @param array $errors
+ *
+ * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_validateForm/
+ */
+function salutations_civicrm_validateForm($formName, &$fields, &$files, &$form, &$errors) {
+  if($formName == 'CRM_Contact_Form_CustomData') {
+    $contact_id = $form->get('entityID');
+    $salutation_type = "custom_" . civicrm_api3('CustomField', 'getvalue', ['return' => "id",'name' => "salutation_type",]);
+    $existing_salutations = civicrm_api3('CustomValue', 'get', ['sequential' => 1,'return' => ["$salutation_type"],'entity_id' => $contact_id,]);
+    foreach($fields as $fieldKey => $fieldValue) {
+      if (stristr($fieldKey, $salutation_type)) {
+        if (in_array($fieldValue, $existing_salutations['values'][0])) {
+          $errors["$fieldKey"] = 'A salutation of this type already exists.';
+        }
+      }
+    }
+  }
+}
+
+/**
  * Implements hook_civicrm_postProcess().
  *
  * This updates a contact's salutations after record update
@@ -183,8 +209,10 @@ function salutations_civicrm_postProcess($formName, &$form) {
   if($formName == 'CRM_Contact_Form_Contact' ||
      $formName == 'CRM_Contact_Form_Inline_ContactName') {
 
+    //TODO there's probably a more efficient way to do this
     $contact_id = $form->get('cid');
-    $contact_details = civicrm_api3('Contact', 'getsingle', ['id' => "$contact_id",]);
+    $salutations_group_id = civicrm_api3('CustomGroup', 'getvalue', ['return' => "id",'name' => "salutations",]);
+    $salutations_group = "civicrm_value_salutations_" . $salutations_group_id ."_id";
     $salutation_type_id = civicrm_api3('CustomField', 'getvalue', ['return' => "id",'name' => "salutation_type",]);
     $salutation_greeting_id = civicrm_api3('CustomField', 'getvalue', ['return' => "id",'name' => "salutation_postal_greeting",]);
     $salutation_addressee_id = civicrm_api3('CustomField', 'getvalue', ['return' => "id",'name' => "salutation_addressee",]);
@@ -201,9 +229,10 @@ function salutations_civicrm_postProcess($formName, &$form) {
           "custom_$salutation_type_id" => "$salutation_name",
         ]);
         if ($salutation_option_selected['values'][0]["custom_$salutation_addressee_id"] != 4 ) {
+          //TODO these functions aren't correctly normalized
           $greeting_string = salutation_greeting_string('addressee', $salutation_option_selected['values'][0]["custom_$salutation_addressee_id"]);
-          CRM_Contact_BAO_Contact_Utils::processGreetingTemplate($greeting_string, $contact_details, $contact_id, 'CRM_UpdateGreeting');
-          salutation_greeting_update($contact_id, $salutation_option_selected['values'][0]["civicrm_value_salutations_16_id"], $greeting_string); 
+          $greeting = civicrm_api3('Salutation', 'process', ['contactId' => $contact_id, 'greetingString' => $greeting_string]);
+          salutation_greeting_update($contact_id, $salutation_option_selected['values'][0][$salutations_group], $greeting['values']['greeting']);
         }
       } else {
         $salutation_option_selected = civicrm_api3('Contact', 'get', [
@@ -213,9 +242,10 @@ function salutations_civicrm_postProcess($formName, &$form) {
           "custom_$salutation_type_id" => "$salutation_name",
         ]);
         if ($salutation_option_selected['values'][0]["custom_$salutation_greeting_id"] != 4 ) {
+          //TODO these functions aren't correctly normalized
           $greeting_string = salutation_greeting_string('postal_greeting', $salutation_option_selected['values'][0]["custom_$salutation_greeting_id"]);
-          CRM_Contact_BAO_Contact_Utils::processGreetingTemplate($greeting_string, $contact_details, $contact_id, 'CRM_UpdateGreeting');
-          salutation_greeting_update($contact_id, $salutation_option_selected['values'][0]["civicrm_value_salutations_16_id"], $greeting_string); 
+          $greeting = civicrm_api3('Salutation', 'process', ['contactId' => $contact_id, 'greetingString' => $greeting_string]);
+          salutation_greeting_update($contact_id, $salutation_option_selected['values'][0][$salutations_group], $greeting['values']['greeting']);
         }
       }
     }
@@ -245,7 +275,7 @@ function salutation_greeting_string($type, $option) {
  * Helper function for salutation updates after contact updates
  */
 function salutation_greeting_update($contact_id, $salutation_id, $salutation) {
-  $contactEdUpdate = civicrm_api3('CustomValue', 'create', array(
+  $contactSalutationUpdate = civicrm_api3('CustomValue', 'create', array(
     'entity_id' => $contact_id,
     "custom_salutations:Salutation:$salutation_id" => "$salutation",
   ));
