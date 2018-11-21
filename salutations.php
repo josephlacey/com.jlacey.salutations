@@ -164,6 +164,8 @@ function salutations_civicrm_entityTypes(&$entityTypes) {
 function salutations_civicrm_buildForm($formName, &$form) {
   if ($formName == 'CRM_Contact_Form_CustomData') {
     CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/salutations.js');
+    //Widen the Salutation drop-down.
+    CRM_Core_Resources::singleton()->addStyle('#select2-drop {width: 600px !important;}');
   }
   if ($formName == 'CRM_Contact_Form_Contact' ||
       $formName == 'CRM_Contact_Form_Inline_CommunicationPreferences') {
