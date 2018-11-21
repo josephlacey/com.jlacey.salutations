@@ -163,10 +163,12 @@ function salutations_civicrm_entityTypes(&$entityTypes) {
  */
 function salutations_civicrm_buildForm($formName, &$form) {
   if ($formName == 'CRM_Contact_Form_CustomData') {
-    CRM_Core_Resources::singleton()->addVars('salutations', ['cid' => $form->_tableID]);
-    CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/salutations.js');
-    //Widen the Salutation drop-down.
-    CRM_Core_Resources::singleton()->addStyle('#select2-drop {width: 600px !important;}');
+    $customGroupName = civicrm_api3('CustomGroup', 'getvalue', ['return' => "name",'id' => $form->_groupID,]);
+    if ($customGroupName == 'salutations') {
+      CRM_Core_Resources::singleton()->addVars('salutations', ['cid' => $form->_tableID]);
+      CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/salutations.js');
+      CRM_Core_Resources::singleton()->addStyleFile('com.jlacey.salutations', 'css/salutations.css');
+    }
   }
   if ($formName == 'CRM_Contact_Form_Contact' ||
       $formName == 'CRM_Contact_Form_Inline_CommunicationPreferences') {
@@ -188,8 +190,7 @@ function salutations_civicrm_buildForm($formName, &$form) {
 function salutations_civicrm_validateForm($formName, &$fields, &$files, &$form, &$errors) {
   if ($formName == 'CRM_Contact_Form_CustomData') {
     $contact_id = $form->get('entityID');
-    $salutation_type = "custom_" . civicrm_api3('CustomField', 'getvalue', ['return' => "id",
-              'name' => "salutation_type",]);
+    $salutation_type = "custom_" . civicrm_api3('CustomField', 'getvalue', ['return' => "id",'name' => "salutation_type",]);
     // Make sure this is a new field; updates are allowed to update themselves.
     // Array keys in $fields look like 'custom_6_567', where '567' is the custom
     // value ID, which unfortunately there's no easier way to get.
