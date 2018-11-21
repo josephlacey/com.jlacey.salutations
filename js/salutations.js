@@ -104,7 +104,7 @@ function process_salutation(greetingToken){
       CRM.$("input[id*='custom_" + salutationField.id + "']").prop('readonly', 'readonly');
       //Process the salutation tokens
       CRM.api3('Salutation', 'process', {
-        "contactId": get_url_vars()['cid'],
+        "contactId": CRM.vars.salutations.cid,
         "greetingString": greetingToken,
       }).done(function(result) {
         //And the set the value
@@ -115,17 +115,4 @@ function process_salutation(greetingToken){
       CRM.$("input[id*='custom_" + salutationField.id + "']").removeProp('readonly');
     }
   });
-}
-
-/*
- * Helper function to get URL variables
- *
- * Needed to get the contact id for proper token processing
- */
-function get_url_vars() {
-  var vars = {};
-  var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-    vars[key] = value;
-  });
-  return vars;
 }
