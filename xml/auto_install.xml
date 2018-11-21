@@ -43,7 +43,7 @@
       <weight>2</weight>
       <is_active>1</is_active>
       <is_view>0</is_view>
-      <text_length>255</text_length>
+      <text_length>512</text_length>
       <column_name>salutation_postal_greeting</column_name>
       <in_selector>0</in_selector>
       <option_group_name>salutation_postal_greeting_options</option_group_name>
@@ -60,7 +60,7 @@
       <weight>3</weight>
       <is_active>1</is_active>
       <is_view>0</is_view>
-      <text_length>255</text_length>
+      <text_length>512</text_length>
       <column_name>salutation_addressee</column_name>
       <in_selector>0</in_selector>
       <option_group_name>salutation_addressee_options</option_group_name>
@@ -71,7 +71,7 @@
       <label>Salutation</label>
       <data_type>String</data_type>
       <html_type>Text</html_type>
-      <text_length>255</text_length>
+      <text_length>512</text_length>
       <is_required>1</is_required>
       <is_searchable>1</is_searchable>
       <is_search_range>0</is_search_range>
