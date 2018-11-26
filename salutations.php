@@ -246,63 +246,67 @@ function salutations_civicrm_postProcess($formName, &$form) {
     if (empty($contact_id)) {
       $contact_id = $form->_contactId;
     }
+    salutation_process_helper($contact_id, $form->_action);
+  }
+}
 
-    //Salutation Type Field
-    $type_field_id = civicrm_api3('CustomField', 'getvalue', [
-      'return' => "id",
-      'name' => "salutation_type",
-    ]);
-    //Salutation Field
-    $salutation_field_id = civicrm_api3('CustomField', 'getvalue', [
-      'return' => "id",
-      'name' => "salutation",
-    ]);
-    //Salutation Types
-    $salutation_types = civicrm_api3('OptionValue', 'get',[
-      'return' => ["name","value"],
-      'option_group_id.name' => "salutation_type_options",
-    ]);
+function salutation_process_helper($contact_id, $action) {
+  //Salutation Type Field
+  $type_field_id = civicrm_api3('CustomField', 'getvalue', [
+    'return' => "id",
+    'name' => "salutation_type",
+  ]);
+  //Salutation Field
+  $salutation_field_id = civicrm_api3('CustomField', 'getvalue', [
+    'return' => "id",
+    'name' => "salutation",
+  ]);
+  //Salutation Types
+  $salutation_types = civicrm_api3('OptionValue', 'get',[
+    'return' => ["name","value"],
+    'option_group_id.name' => "salutation_type_options",
+    'is_active' => 1,
+  ]);
 
-    foreach($salutation_types['values'] as $salutation_type) {
-      $salutation_type_name = $salutation_type['name'];
-      if ($salutation_type_name == "Addressee") {
-        //Get Addressee Field
-        $addressee_field_id = civicrm_api3('CustomField', 'getvalue', [
-          'return' => "id",
-          'name' => "salutation_addressee",
-        ]);
-        if ($form->_action == 1) {
-          salutation_create('addressee', $addressee_field_id, $contact_id, $salutation_type['value']);
-        } else {
-          $salutation_option_selected = civicrm_api3('Contact', 'get', [
-            'sequential' => 1,
-            'return' => "custom_$addressee_field_id",
-            'id' => $contact_id,
-            "custom_$type_field_id" => "$salutation_type_name",
-          ]);
-          if ($salutation_option_selected['count'] == 1 &&
-              $salutation_option_selected['values'][0]["custom_$addressee_field_id"] != 4) {
-            salutation_update('addressee', $addressee_field_id, $contact_id, $salutation_option_selected);
-          }
-        }
+  foreach($salutation_types['values'] as $salutation_type) {
+    $salutation_type_name = $salutation_type['name'];
+    if ($salutation_type_name == "Addressee") {
+      //Get Addressee Field
+      $addressee_field_id = civicrm_api3('CustomField', 'getvalue', [
+        'return' => "id",
+        'name' => "salutation_addressee",
+      ]);
+      if ($action == 1) {
+        salutation_create('addressee', $addressee_field_id, $contact_id, $salutation_type['value']);
       } else {
-        $greeting_field_id = civicrm_api3('CustomField', 'getvalue', [
-          'return' => "id",
-          'name' => "salutation_postal_greeting",
+        $salutation_option_selected = civicrm_api3('Contact', 'get', [
+          'sequential' => 1,
+          'return' => "custom_$addressee_field_id",
+          'id' => $contact_id,
+          "custom_$type_field_id" => "$salutation_type_name",
         ]);
-        if ($form->_action == 1) {
-          salutation_create('postal_greeting', $greeting_field_id, $contact_id, $salutation_type['value']);
-        } else {
-          $salutation_option_selected = civicrm_api3('Contact', 'get', [
-            'sequential' => 1,
-            'return' => "custom_$greeting_field_id",
-            'id' => $contact_id,
-            "custom_$type_field_id" => "$salutation_type_name",
-          ]);
-          if ($salutation_option_selected['count'] == 1 &&
-              $salutation_option_selected['values'][0]["custom_$greeting_field_id"] != 4) {
-            salutation_update('postal_greeting', $greeting_field_id, $contact_id, $salutation_option_selected);
-          }
+        if ($salutation_option_selected['count'] == 1 &&
+            $salutation_option_selected['values'][0]["custom_$addressee_field_id"] != 4) {
+          salutation_update('addressee', $addressee_field_id, $contact_id, $salutation_option_selected);
+        }
+      }
+    } else {
+      $greeting_field_id = civicrm_api3('CustomField', 'getvalue', [
+        'return' => "id",
+        'name' => "salutation_postal_greeting",
+      ]);
+      if ($action == 1) {
+        salutation_create('postal_greeting', $greeting_field_id, $contact_id, $salutation_type['value']);
+      } else {
+        $salutation_option_selected = civicrm_api3('Contact', 'get', [
+          'sequential' => 1,
+          'return' => "custom_$greeting_field_id",
+          'id' => $contact_id,
+          "custom_$type_field_id" => "$salutation_type_name",
+        ]);
+        if ($salutation_option_selected['count'] == 1 &&
+            $salutation_option_selected['values'][0]["custom_$greeting_field_id"] != 4) {
+          salutation_update('postal_greeting', $greeting_field_id, $contact_id, $salutation_option_selected);
         }
       }
     }
@@ -339,7 +343,7 @@ function salutation_update($type, $type_field_id, $contact_id, $salutation_optio
   $salutation = $processed_salutation['values']['greeting'];
   $contactSalutationUpdate = civicrm_api3('CustomValue', 'create', [
     'entity_id' => $contact_id,
-    "custom_salutations:Salutation:$salutation_id" => "$salutation",
+    "custom_salutations:salutation:$salutation_id" => "$salutation",
   ]);
 }
 
@@ -370,13 +374,29 @@ function salutation_create($type, $type_field_id, $contact_id, $salutation_value
   ]);
 
   //Create the saluation
+  $salutation_type_value = civicrm_api3('OptionValue', 'getvalue', [
+    'return' => "value",
+    'id' => $salutation_string['values'][0]['id'],
+  ]);
   $salutation = $processed_salutation['values']['greeting'];
   $contactSalutationCreate = civicrm_api3('CustomValue', 'create', [
     'entity_id' => $contact_id,
     "custom_salutations:salutation_type" => $salutation_value,
-    "custom_salutations:$type" => $salutation_string['values'][0]['id'],
-    "custom_salutations:Salutation" => "$salutation",
+    "custom_salutations:salutation_$type" => $salutation_type_value,
+    "custom_salutations:salutation" => "$salutation",
   ]);
+}
+
+/**
+ * Implements hook_civicrm_import().
+ *
+ * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_import/
+ */
+function salutations_civicrm_import($object, $usage, &$objectRef, $params) {
+  if ($object == 'Contact') {
+    //TODO Will this create dupes if the contact already exists in the database?
+    salutation_process_helper($params['contactID'], 1);
+  }
 }
 
 /**
@@ -470,6 +490,7 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
   $salutations = civicrm_api3('OptionValue', 'get', [
     'return' => "name",
     'option_group_id.name' => "salutation_type_options",
+    'is_active' => 1,
   ]);
 
   //Processed the different type options for each contact
@@ -485,16 +506,18 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
         "$salutation_type_field_id" => "$salutation_name",
       ]);
 
-      $salutation["contact.salutation_$salutation_name"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
-      $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
+      if ($processed_salutation['count'] == 1) {
+        $salutation["contact.salutation_$salutation_name"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+        $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
 
-      //If the salutation fields has a corollary core one, set the core greeting token
-      foreach ($core_greeting_types as $core_greeting) {
-        if (FALSE !== (stristr($core_greeting, $salutation_name))) {
-          $values[$cid]["$core_greeting"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
-          $values[$cid]["$core_greeting" . "_display"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
-          if (isset($values[$cid]["$core_greeting". "_custom"])) {
-            $values[$cid]["$core_greeting" . "_custom"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+        //If the salutation fields has a corollary core one, set the core greeting token
+        foreach ($core_greeting_types as $core_greeting) {
+          if (FALSE !== (stristr($core_greeting, $salutation_name))) {
+            $values[$cid]["$core_greeting"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+            $values[$cid]["$core_greeting" . "_display"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+            if (isset($values[$cid]["$core_greeting". "_custom"])) {
+              $values[$cid]["$core_greeting" . "_custom"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+            }
           }
         }
       }
