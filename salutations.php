@@ -495,6 +495,7 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
 
   //Processed the different type options for each contact
   foreach($cids as $cid) {
+    $salutation = array();
     foreach($salutations['values'] as $salutation_id => $salutation_type) {
 
       $salutation_name = strtolower($salutation_type['name']);
