@@ -56,7 +56,10 @@ function salutation_type (fieldId){
 
       //Generate the selected option
       //Page Load
-      process_salutation(CRM.$("select[id*='custom_" + selectedGreetingField.id + "']").children('option:selected').text());
+      greetingToken = CRM.$("select[id*='custom_" + selectedGreetingField.id + "']").children('option:selected').text();
+      if (greetingToken != '- none -') {
+        process_salutation(greetingToken);
+      }
       //When the salutation option changes
       CRM.$("select[id*='custom_" + selectedGreetingField.id + "']").change(function() {
         process_salutation(CRM.$(this).children('option:selected').text());
