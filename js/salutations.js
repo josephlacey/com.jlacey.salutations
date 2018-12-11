@@ -27,8 +27,8 @@
     "name": "salutation_addressee"
   }).done(function(salutationAddresseeField) {
     CRM.$("tr[class*='custom_" + salutationAddresseeField.id + "'] .crm-option-edit-link").attr({
-      'data-option-edit-path': 'civicrm/admin/options/addressee',
-      href: '/civicrm/admin/options/addressee?reset=1'
+      'data-option-edit-path': 'civicrm/admin/options/postal_greeting',
+      href: '/civicrm/admin/options/postal_greeting?reset=1'
     });
   });
 })(CRM.$);

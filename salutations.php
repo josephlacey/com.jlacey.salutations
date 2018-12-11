@@ -277,7 +277,7 @@ function salutation_process_helper($contact_id, $action) {
         'name' => "salutation_addressee",
       ]);
       if ($action == 1) {
-        salutation_create('addressee', $addressee_field_id, $contact_id, $salutation_type['value']);
+        salutation_create('postal_greeting', $addressee_field_id, $contact_id, $salutation_type['value']);
       } else {
         $salutation_option_selected = civicrm_api3('Contact', 'get', [
           'sequential' => 1,
@@ -287,7 +287,7 @@ function salutation_process_helper($contact_id, $action) {
         ]);
         if ($salutation_option_selected['count'] == 1 &&
             $salutation_option_selected['values'][0]["custom_$addressee_field_id"] != 4) {
-          salutation_update('addressee', $addressee_field_id, $contact_id, $salutation_option_selected);
+          salutation_update('postal_greeting', $addressee_field_id, $contact_id, $salutation_option_selected);
         }
       }
     } else {
@@ -447,7 +447,7 @@ function salutations_civicrm_fieldOptions($entity, $field, &$options, $params) {
           'id' => $contact_id,
         ]);
       }
-      $filterCondition['greeting_type'] = substr($salutation_field['name'], 11);
+      $filterCondition['greeting_type'] = 'postal_greeting';
       $options = CRM_Core_PseudoConstant::greeting($filterCondition);
     }
   }
