@@ -523,7 +523,7 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
         }
       }
     }
-    if (!$empty($salutation)) {
+    if (!empty($salutation)) {
       $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
     }
   }
