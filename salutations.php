@@ -51,11 +51,6 @@ function salutations_civicrm_postInstall() {
   $postal_greeting_migration_sql = "INSERT INTO $salutation_table (entity_id, salutation_type, salutation_postal_greeting, salutation)
                                          SELECT id, 'salutation_postal_greeting', postal_greeting_id, postal_greeting_display FROM civicrm_contact";
   $postal_greeting_migration = CRM_Core_DAO::executeQuery($postal_greeting_migration_sql);
-
-  //Migrating Addressees
-  $addressee_migration_sql = "INSERT INTO $salutation_table (entity_id, salutation_type, salutation_addressee, salutation)
-                                   SELECT id, 'salutation_addressee', addressee_id, addressee_display FROM civicrm_contact";
-  $addressee_migration = CRM_Core_DAO::executeQuery($addressee_migration_sql);
 }
 
 /**
@@ -270,44 +265,22 @@ function salutation_process_helper($contact_id, $action) {
 
   foreach($salutation_types['values'] as $salutation_type) {
     $salutation_type_name = $salutation_type['name'];
-    if ($salutation_type_name == "Addressee") {
-      //Get Addressee Field
-      $addressee_field_id = civicrm_api3('CustomField', 'getvalue', [
-        'return' => "id",
-        'name' => "salutation_addressee",
-      ]);
-      if ($action == 1) {
-        salutation_create('postal_greeting', $addressee_field_id, $contact_id, $salutation_type['value']);
-      } else {
-        $salutation_option_selected = civicrm_api3('Contact', 'get', [
-          'sequential' => 1,
-          'return' => "custom_$addressee_field_id",
-          'id' => $contact_id,
-          "custom_$type_field_id" => "$salutation_type_name",
-        ]);
-        if ($salutation_option_selected['count'] == 1 &&
-            $salutation_option_selected['values'][0]["custom_$addressee_field_id"] != 4) {
-          salutation_update('postal_greeting', $addressee_field_id, $contact_id, $salutation_option_selected);
-        }
-      }
+    $greeting_field_id = civicrm_api3('CustomField', 'getvalue', [
+      'return' => "id",
+      'name' => "salutation_postal_greeting",
+    ]);
+    if ($action == 1) {
+      salutation_create('postal_greeting', $greeting_field_id, $contact_id, $salutation_type['value']);
     } else {
-      $greeting_field_id = civicrm_api3('CustomField', 'getvalue', [
-        'return' => "id",
-        'name' => "salutation_postal_greeting",
+      $salutation_option_selected = civicrm_api3('Contact', 'get', [
+        'sequential' => 1,
+        'return' => "custom_$greeting_field_id",
+        'id' => $contact_id,
+        "custom_$type_field_id" => "$salutation_type_name",
       ]);
-      if ($action == 1) {
-        salutation_create('postal_greeting', $greeting_field_id, $contact_id, $salutation_type['value']);
-      } else {
-        $salutation_option_selected = civicrm_api3('Contact', 'get', [
-          'sequential' => 1,
-          'return' => "custom_$greeting_field_id",
-          'id' => $contact_id,
-          "custom_$type_field_id" => "$salutation_type_name",
-        ]);
-        if ($salutation_option_selected['count'] == 1 &&
-            $salutation_option_selected['values'][0]["custom_$greeting_field_id"] != 4) {
-          salutation_update('postal_greeting', $greeting_field_id, $contact_id, $salutation_option_selected);
-        }
+      if ($salutation_option_selected['count'] == 1 &&
+          $salutation_option_selected['values'][0]["custom_$greeting_field_id"] != 4) {
+        salutation_update('postal_greeting', $greeting_field_id, $contact_id, $salutation_option_selected);
       }
     }
   }
@@ -423,7 +396,7 @@ function salutations_civicrm_pageRun( &$page ) {
 function salutations_civicrm_fieldOptions($entity, $field, &$options, $params) {
   if ($entity == 'Contact') {
     //Declare core greeting type to include options
-    $core_greeting_types = array("postal_greeting", "addressee");
+    $core_greeting_types = array("postal_greeting");
     
     //Grab custom salutation fields
     $salutation_fields =  civicrm_api3('CustomField', 'get', [
