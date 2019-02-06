@@ -226,24 +226,20 @@ function salutations_civicrm_validateForm($formName, &$fields, &$files, &$form, 
 }
 
 /**
- * Implements hook_civicrm_postProcess().
+ * Implements hook_civicrm_post().
  *
  * This updates a contact's salutations after record update
  *
- * @param string $formName
- * @param CRM_Core_Form $form
  */
-function salutations_civicrm_postProcess($formName, &$form) {
-  if($formName == 'CRM_Contact_Form_Contact' ||
-     $formName == 'CRM_Contact_Form_Inline_ContactName') {
-
-    $contact_id = $form->get('cid');
-    if (empty($contact_id)) {
-      $contact_id = $form->_contactId;
+function salutations_civicrm_post($op, $objectName, $objectId, &$objectRef) {
+  if ($op == 'create' || $op == 'edit') {
+    if ($objectName == 'Individual' || $objectName == 'Organization') {
+      $action = ($op == 'create' ? 1 : 2);
+      salutation_process_helper($objectId, $action);
     }
-    salutation_process_helper($contact_id, $form->_action);
   }
 }
+
 
 function salutation_process_helper($contact_id, $action) {
   //Salutation Type Field
@@ -358,18 +354,6 @@ function salutation_create($type, $type_field_id, $contact_id, $salutation_value
     "custom_salutations:salutation_$type" => $salutation_type_value,
     "custom_salutations:salutation" => "$salutation",
   ]);
-}
-
-/**
- * Implements hook_civicrm_import().
- *
- * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_import/
- */
-function salutations_civicrm_import($object, $usage, &$objectRef, $params) {
-  if ($object == 'Contact') {
-    //TODO Will this create dupes if the contact already exists in the database?
-    salutation_process_helper($params['contactID'], 1);
-  }
 }
 
 /**
