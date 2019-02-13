@@ -3,6 +3,66 @@
 require_once 'salutations.civix.php';
 use CRM_Salutations_ExtensionUtil as E;
 
+
+/**
+ * Implements hook_civicrm_export().
+ *
+ * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_export
+ */
+function salutations_civicrm_export(&$exportTempTable, &$headerRows, &$sqlColumns, &$exportMode, &$componentTable, &$ids) {
+  // Are we exporting salutations?
+  $result = civicrm_api3('Setting', 'getvalue', array(
+    'name' => "salutationExport",
+  ));
+  if (!$result) {
+    return;
+  }
+  // Make sure we actually have a "civicrm_primary_id" field to join on.
+  if (!array_key_exists('civicrm_primary_id', $sqlColumns)) {
+    return;
+  }
+  // Get details on the salutations
+  $salutationsToExport = civicrm_api3('OptionValue', 'get', [
+    'sequential' => 1,
+    'option_group_id' => "salutation_type_options",
+    'value' => ['IN' => CRM_Utils_Array::explodePadded($result)],
+  ])['values'];
+
+  $customTableName = civicrm_api3('CustomGroup', 'getvalue', [
+    'return' => "table_name",
+    'name' => "salutations",
+  ]);
+
+  // Alter the temp table.
+  $alterTable = "ALTER TABLE $exportTempTable ";
+  foreach ($salutationsToExport as $salutation) {
+    $alterTable .= "ADD COLUMN sal_{$salutation['value']} VARCHAR(512),";
+  }
+  $alterTable = rtrim($alterTable, ',');
+
+  // Update the temp table.
+  $sql = "UPDATE " . $exportTempTable . " a ";
+  foreach ($salutationsToExport as $salutation) {
+    $tableAlias = "table_" . $salutation['value'];
+    $sql .= "LEFT JOIN $customTableName $tableAlias ON a.civicrm_primary_id = {$tableAlias}.entity_id AND {$tableAlias}.salutation_type = '{$salutation['value']}' ";
+  }
+  $sql .= "SET";
+  foreach ($salutationsToExport as $salutation) {
+    $tableAlias = "table_" . $salutation['value'];
+    $sql .= " sal_{$salutation['value']} = $tableAlias.salutation,";
+  }
+  $sql = rtrim($sql, ',');
+
+  // Update the export arrays.
+  foreach ($salutationsToExport as $salutation) {
+    $headerRows[] = $salutation['label'];
+    $sqlColumns["sal_{$salutation['value']}"] = "sal_{$salutation['value']} varchar(512)";
+  }
+
+  CRM_Core_DAO::singleValueQuery($alterTable);
+  CRM_Core_DAO::singleValueQuery($sql);
+}
+
 /**
  * Implements hook_civicrm_config().
  *
@@ -175,6 +235,10 @@ function salutations_civicrm_buildForm($formName, &$form) {
       $formName == 'CRM_Contact_Form_Inline_CommunicationPreferences') {
     //Hide the core addressee and greetings
     CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/hide-core-greetings.js');
+  }
+  // Inject the Salutation Export JS.
+  if ($formName == 'CRM_Export_Form_Map') {
+    CRM_Core_Resources::singleton()->addScriptFile('com.jlacey.salutations', 'js/salutationexport.js');
   }
 }
 
