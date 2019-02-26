@@ -245,6 +245,8 @@ function salutations_civicrm_post($op, $objectName, $objectId, &$objectRef) {
 }
 
 function salutation_process_helper($contact_id, $action) {
+  $core_greeting_types = array("salutation_email_greeting", "salutation_postal_greeting", "salutation_addressee");
+
   //Salutation Type Field
   $type_field_id = civicrm_api3('CustomField', 'getvalue', [
     'return' => "id",
@@ -263,7 +265,8 @@ function salutation_process_helper($contact_id, $action) {
       'return' => "id",
       'name' => "salutation_postal_greeting",
     ]);
-    if ($action == 1) {
+    //If creating a new contact, only create the three core greetings by default
+    if ($action == 1 && in_array($salutation_type['value'], $core_greeting_types)) {
       salutation_create('postal_greeting', $greeting_field_id, $contact_id, $salutation_type['value']);
     } else {
       $salutation_option_selected = civicrm_api3('Contact', 'get', [
