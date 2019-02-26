@@ -3,66 +3,6 @@
 require_once 'salutations.civix.php';
 use CRM_Salutations_ExtensionUtil as E;
 
-
-/**
- * Implements hook_civicrm_export().
- *
- * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_export
- */
-function salutations_civicrm_export(&$exportTempTable, &$headerRows, &$sqlColumns, &$exportMode, &$componentTable, &$ids) {
-  // Are we exporting salutations?
-  $result = civicrm_api3('Setting', 'getvalue', array(
-    'name' => "salutationExport",
-  ));
-  if (!$result) {
-    return;
-  }
-  // Make sure we actually have a "civicrm_primary_id" field to join on.
-  if (!array_key_exists('civicrm_primary_id', $sqlColumns)) {
-    return;
-  }
-  // Get details on the salutations
-  $salutationsToExport = civicrm_api3('OptionValue', 'get', [
-    'sequential' => 1,
-    'option_group_id' => "salutation_type_options",
-    'value' => ['IN' => CRM_Utils_Array::explodePadded($result)],
-  ])['values'];
-
-  $customTableName = civicrm_api3('CustomGroup', 'getvalue', [
-    'return' => "table_name",
-    'name' => "salutations",
-  ]);
-
-  // Alter the temp table.
-  $alterTable = "ALTER TABLE $exportTempTable ";
-  foreach ($salutationsToExport as $salutation) {
-    $alterTable .= "ADD COLUMN sal_{$salutation['value']} VARCHAR(512),";
-  }
-  $alterTable = rtrim($alterTable, ',');
-
-  // Update the temp table.
-  $sql = "UPDATE " . $exportTempTable . " a ";
-  foreach ($salutationsToExport as $salutation) {
-    $tableAlias = "table_" . $salutation['value'];
-    $sql .= "LEFT JOIN $customTableName $tableAlias ON a.civicrm_primary_id = {$tableAlias}.entity_id AND {$tableAlias}.salutation_type = '{$salutation['value']}' ";
-  }
-  $sql .= "SET";
-  foreach ($salutationsToExport as $salutation) {
-    $tableAlias = "table_" . $salutation['value'];
-    $sql .= " sal_{$salutation['value']} = $tableAlias.salutation,";
-  }
-  $sql = rtrim($sql, ',');
-
-  // Update the export arrays.
-  foreach ($salutationsToExport as $salutation) {
-    $headerRows[] = $salutation['label'];
-    $sqlColumns["sal_{$salutation['value']}"] = "sal_{$salutation['value']} varchar(512)";
-  }
-
-  CRM_Core_DAO::singleValueQuery($alterTable);
-  CRM_Core_DAO::singleValueQuery($sql);
-}
-
 /**
  * Implements hook_civicrm_config().
  *
@@ -304,17 +244,11 @@ function salutations_civicrm_post($op, $objectName, $objectId, &$objectRef) {
   }
 }
 
-
 function salutation_process_helper($contact_id, $action) {
   //Salutation Type Field
   $type_field_id = civicrm_api3('CustomField', 'getvalue', [
     'return' => "id",
     'name' => "salutation_type",
-  ]);
-  //Salutation Field
-  $salutation_field_id = civicrm_api3('CustomField', 'getvalue', [
-    'return' => "id",
-    'name' => "salutation",
   ]);
   //Salutation Types
   $salutation_types = civicrm_api3('OptionValue', 'get',[
@@ -480,9 +414,9 @@ function salutations_civicrm_fieldOptions($entity, $field, &$options, $params) {
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_tokens/
  */
 function salutations_civicrm_tokens( &$tokens ) {
-  $salutations = civicrm_api3('OptionValue', 'get', ['return' => ["name", "label"],'option_group_id.name' => "salutation_type_options",]);
+  $salutations = civicrm_api3('OptionValue', 'get', ['return' => ["value", "label"],'option_group_id.name' => "salutation_type_options",]);
   foreach($salutations['values'] as $salutation) {
-    $tokens['contact']['contact.salutation_' . strtolower($salutation['name'])] = $salutation['label'] . " Salutation";
+    $tokens['contact']["contact." . $salutation['value']] = $salutation['label'] . " Salutation";
   }
 }
 
@@ -509,7 +443,7 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
   $processed_salutation_field_id = 'custom_' . $processed_salutation_field;
 
   $salutations = civicrm_api3('OptionValue', 'get', [
-    'return' => "name",
+    'return' => "value",
     'option_group_id.name' => "salutation_type_options",
     'is_active' => 1,
   ]);
@@ -519,22 +453,20 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
     $salutation = array();
     foreach($salutations['values'] as $salutation_id => $salutation_type) {
 
-      $salutation_name = strtolower($salutation_type['name']);
-
       $processed_salutation = civicrm_api3('Contact', 'get', [
         'sequential' => 1,
         'return' => ["$processed_salutation_field_id"],
         'id' => $cid,
-        "$salutation_type_field_id" => "$salutation_name",
+        "$salutation_type_field_id" => $salutation_type['value'],
       ]);
 
       if ($processed_salutation['count'] == 1) {
-        $salutation["contact.salutation_$salutation_name"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
+        $salutation["contact." . $salutation_type['value']] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
         $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
 
         //If the salutation fields has a corollary core one, set the core greeting token
         foreach ($core_greeting_types as $core_greeting) {
-          if (FALSE !== (stristr($core_greeting, $salutation_name))) {
+          if (FALSE !== (stristr($core_greeting, $salutation_type['value']))) {
             $values[$cid]["$core_greeting"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
             $values[$cid]["$core_greeting" . "_display"] = $processed_salutation['values'][0]["$processed_salutation_field_id"];
             if (isset($values[$cid]["$core_greeting". "_custom"])) {
@@ -548,4 +480,63 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
       $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
     }
   }
+}
+
+/**
+ * Implements hook_civicrm_export().
+ *
+ * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_export
+ */
+function salutations_civicrm_export(&$exportTempTable, &$headerRows, &$sqlColumns, &$exportMode, &$componentTable, &$ids) {
+  // Are we exporting salutations?
+  $result = civicrm_api3('Setting', 'getvalue', array(
+    'name' => "salutationExport",
+  ));
+  if (!$result) {
+    return;
+  }
+  // Make sure we actually have a "civicrm_primary_id" field to join on.
+  if (!array_key_exists('civicrm_primary_id', $sqlColumns)) {
+    return;
+  }
+  // Get details on the salutations
+  $salutationsToExport = civicrm_api3('OptionValue', 'get', [
+    'sequential' => 1,
+    'option_group_id' => "salutation_type_options",
+    'value' => ['IN' => CRM_Utils_Array::explodePadded($result)],
+  ])['values'];
+
+  $customTableName = civicrm_api3('CustomGroup', 'getvalue', [
+    'return' => "table_name",
+    'name' => "salutations",
+  ]);
+
+  // Alter the temp table.
+  $alterTable = "ALTER TABLE $exportTempTable ";
+  foreach ($salutationsToExport as $salutation) {
+    $alterTable .= "ADD COLUMN sal_{$salutation['value']} VARCHAR(512),";
+  }
+  $alterTable = rtrim($alterTable, ',');
+
+  // Update the temp table.
+  $sql = "UPDATE " . $exportTempTable . " a ";
+  foreach ($salutationsToExport as $salutation) {
+    $tableAlias = "table_" . $salutation['value'];
+    $sql .= "LEFT JOIN $customTableName $tableAlias ON a.civicrm_primary_id = {$tableAlias}.entity_id AND {$tableAlias}.salutation_type = '{$salutation['value']}' ";
+  }
+  $sql .= "SET";
+  foreach ($salutationsToExport as $salutation) {
+    $tableAlias = "table_" . $salutation['value'];
+    $sql .= " sal_{$salutation['value']} = $tableAlias.salutation,";
+  }
+  $sql = rtrim($sql, ',');
+
+  // Update the export arrays.
+  foreach ($salutationsToExport as $salutation) {
+    $headerRows[] = $salutation['label'];
+    $sqlColumns["sal_{$salutation['value']}"] = "sal_{$salutation['value']} varchar(512)";
+  }
+
+  CRM_Core_DAO::singleValueQuery($alterTable);
+  CRM_Core_DAO::singleValueQuery($sql);
 }
