@@ -202,6 +202,17 @@ function salutations_civicrm_validateForm($formName, &$fields, &$files, &$form, 
       'name' => "salutation_type",
     ]);
 
+    // Ensure that we're actually evalutating salutations and not another
+    // multi-record custom group.
+    $needle = "{$salutation_type}_";
+    foreach (array_keys($fields) as $fieldKey) {
+      if (strpos($fieldKey, $needle) === 0) {
+        $thisIsSalutations = true;
+      }
+    }
+    if (!$thisIsSalutations) {
+      return;
+    }
     // Make sure this is a new field; updates are allowed to update themselves.
     // Array keys in $fields look like 'custom_6_567', where '567' is the custom
     // value ID, which unfortunately there's no easier way to get.
