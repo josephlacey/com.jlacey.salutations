@@ -205,38 +205,33 @@ function salutations_civicrm_validateForm($formName, &$fields, &$files, &$form, 
     // Ensure that we're actually evalutating salutations and not another
     // multi-record custom group.
     $needle = "{$salutation_type}_";
-    foreach (array_keys($fields) as $fieldKey) {
+    $fieldsKeys = array_keys($fields);
+    foreach ($fieldsKeys as $fieldKey) {
       if (strpos($fieldKey, $needle) === 0) {
-        $thisIsSalutations = true;
+        $salutationTypeInput = $fieldKey;
       }
     }
-    if (!$thisIsSalutations) {
+    if (!$salutationTypeInput) {
       return;
     }
     // Make sure this is a new field; updates are allowed to update themselves.
     // Array keys in $fields look like 'custom_6_567', where '567' is the custom
     // value ID, which unfortunately there's no easier way to get.
-    $fieldsKeys = array_keys($fields);
     $customValueKey = preg_grep('/' . $salutation_type . '_/', $fieldsKeys);
-    preg_match('/' . $salutation_type . '_((\d)+)/', array_pop($customValueKey), $matches);
-    $customValueId = $matches[1];
     //Set existing salutations
     $existing_salutations = civicrm_api3('CustomValue', 'get', [
       'sequential' => 1,
       'return' => "$salutation_type",
       'entity_id' => $contact_id,
-    ]);
-    // Remove the current record's ID from $existingSalutations
-    if ($existing_salutations['values'][0][$customValueId]) {
-      unset($existing_salutations['values'][0][$customValueId]);
-      unset($existing_salutations['values'][0]['latest']);
-    }
-    foreach($fields as $fieldKey => $fieldValue) {
-      if (stristr($fieldKey, $salutation_type)) {
-        if (in_array($fieldValue, $existing_salutations['values'][0])) {
-          $errors["$fieldKey"] = 'A salutation of this type already exists.';
-        }
+    ])['values'][0];
+    // Remove non-salutation data from $existingSalutations
+    foreach ($existing_salutations as $k => $dontCare) {
+      if (!is_numeric($k)) {
+        unset($existing_salutations[$k]);
       }
+    }
+    if (in_array($fields[$salutationTypeInput], $existing_salutations)) {
+      $errors[$salutationTypeInput] = 'A salutation of this type already exists';
     }
   }
 }
