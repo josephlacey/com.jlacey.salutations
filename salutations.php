@@ -534,4 +534,16 @@ function salutations_civicrm_export(&$exportTempTable, &$headerRows, &$sqlColumn
 
   CRM_Core_DAO::singleValueQuery($alterTable);
   CRM_Core_DAO::singleValueQuery($sql);
+
+
+// We need to alter API permissions to allow non-administrators to look up custom field values in salutations.js.
+function salutations_civicrm_alterAPIPermissions($entity, $action, &$params, &$permissions) {
+  $permissions['salutation']['process'] = ['access CiviCRM'];
+  if ($entity == 'custom_field' &&
+  ($action == 'getsingle' || $action == 'get') &&
+  in_array($params['name'], ['salutation', 'salutation_postal_greeting', 'salutation_type'])) {
+    $params['check_permissions'] = FALSE;
+    CRM_Core_Error::debug_var('hey', 'hi');
+  }
+}
 }
