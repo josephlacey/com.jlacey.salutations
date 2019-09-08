@@ -33,11 +33,8 @@ function civicrm_api3_salutation_Process($params) {
 
     CRM_Contact_BAO_Contact_Utils::processGreetingTemplate($greetingString, $contactDetails, $contactID, 'CRM_UpdateGreeting');
     $greetingString = trim(str_replace('  ', ' ', $greetingString));
-
-    if ($greetingString != $params['greetingString']) {
-      $returnValues['greeting'] = $greetingString;
-      return civicrm_api3_create_success($returnValues, $params, 'Salutation', 'Process');
-    }
+    $returnValues['greeting'] = $greetingString;
+    return civicrm_api3_create_success($returnValues, $params, 'Salutation', 'Process');
   }
   else {
     throw new API_Exception(/*errorMessage*/ 'Missing required params', /*errorCode*/ 1234);

@@ -217,16 +217,16 @@ function salutations_civicrm_validateForm($formName, &$fields, &$files, &$form, 
     // Make sure this is a new field; updates are allowed to update themselves.
     // Array keys in $fields look like 'custom_6_567', where '567' is the custom
     // value ID, which unfortunately there's no easier way to get.
-    $customValueKey = preg_grep('/' . $salutation_type . '_/', $fieldsKeys);
-    //Set existing salutations
+    $customValueId = substr($salutationTypeInput, strlen($needle));
+    // Get existing salutations.
     $existing_salutations = civicrm_api3('CustomValue', 'get', [
       'sequential' => 1,
       'return' => "$salutation_type",
       'entity_id' => $contact_id,
     ])['values'][0];
-    // Remove non-salutation data from $existingSalutations
+    // Remove non-salutation data from $existingSalutations as well as THIS salutation (so you can update).
     foreach ($existing_salutations as $k => $dontCare) {
-      if (!is_numeric($k)) {
+      if (!is_numeric($k) || $k == $customValueId) {
         unset($existing_salutations[$k]);
       }
     }
@@ -273,37 +273,7 @@ function salutation_process_helper($contact_id, $action) {
  * Helper function for salutation updates after contact updates
  */
 function salutation_update($contact_id) {
-  // Get the existing salutation types for this contact.
-  // This API call adds ~50% overhead, but a direct DAO call is no better.
-  $custom_values = civicrm_api3('CustomValue', 'get', [
-    'entity_id' => $contact_id,
-    'entity_type' => 'Contact',
-  ])['values'];
-
-  $contactDetails = civicrm_api3('Contact', 'getsingle', ['id' => "$contact_id",]);
-  // Iterate through the contact's salutations, calculate the updated values and update the database if necessary.
-  foreach ($custom_values[U::$type_field_id] as $k => $salutation) {
-    if (is_numeric($k)) {
-      $greetingString = U::$salutation_types[$custom_values[U::$greeting_field_id][$k]];
-      // We cache calculated greetings indexed by the greeting_field_id because many greetings will be identical.
-      // processGreetingTemplate() is by far the most expensive call here, so this cuts processing time almost in
-      // half when just two greetings that need more resolution are identical.
-      if (!$new_salutation[$contact_id][$custom_values[U::$greeting_field_id][$k]]) {
-        CRM_Contact_BAO_Contact_Utils::processGreetingTemplate($greetingString, $contactDetails, $contact_id, 'CRM_Salutations');
-        $new_salutation[$contact_id][$custom_values[U::$greeting_field_id][$k]] = $greetingString;
-      }
-      else {
-        $greetingString = $new_salutation[$contact_id][$custom_values[U::$greeting_field_id][$k]];
-      }
-      // Update the greeting, but only if it's changed!
-      if ($greetingString != $custom_values[U::$calculated_salutation_id][$k]) {
-        $contactSalutationUpdate = civicrm_api3('CustomValue', 'create', [
-          'entity_id' => $contact_id,
-          "custom_salutations:salutation:$k" => $greetingString,
-        ]);
-      }
-    }
-  }
+  U::updateSalutation($contact_id);
 }
 
 /*
@@ -312,38 +282,7 @@ function salutation_update($contact_id) {
  * Helper function for salutation updates after contact updates
  */
 function salutation_create($type, $type_field_id, $contact_id, $salutation_value) {
-  $contact_types = array('Individual' => 1, 'Household' => 2, 'Organization' => 3);
-  $contact_type = civicrm_api3('Contact', 'getvalue', [
-    'return' => "contact_type",
-    'id' => $contact_id,
-  ]);
-  //Token string
-  $salutation_string = civicrm_api3('OptionValue', 'get', [
-    'sequential' => 1,
-    'return' => ["label","id"],
-    'option_group_id.name' => "$type",
-    'is_default' => 1, 
-    'filter' => $contact_types["$contact_type"],
-  ]);
-
-  //Process the tokenized string
-  $processed_salutation = civicrm_api3('Salutation', 'process', [
-    'contactId' => $contact_id,
-    'greetingString' => $salutation_string['values'][0]['label']
-  ]);
-
-  //Create the saluation
-  $salutation_type_value = civicrm_api3('OptionValue', 'getvalue', [
-    'return' => "value",
-    'id' => $salutation_string['values'][0]['id'],
-  ]);
-  $salutation = $processed_salutation['values']['greeting'];
-  $contactSalutationCreate = civicrm_api3('CustomValue', 'create', [
-    'entity_id' => $contact_id,
-    "custom_salutations:salutation_type" => $salutation_value,
-    "custom_salutations:salutation_$type" => $salutation_type_value,
-    "custom_salutations:salutation" => "$salutation",
-  ]);
+  U::createSalutation($type, $type_field_id, $contact_id, $salutation_value);
 }
 
 /**
@@ -372,12 +311,17 @@ function salutations_civicrm_fieldOptions($entity, $field, &$options, $params) {
     //Declare core greeting type to include options
     $core_greeting_types = array("postal_greeting");
     
-    //Grab custom salutation fields
-    $salutation_fields =  civicrm_api3('CustomField', 'get', [
-      'return' => "name",
-      'custom_group_id' => "salutations",
-    ]);
-
+    //Grab custom salutation fields (and cache them)
+    $cacheKey = "com.jlacey.salutations_salutationFields";
+    $cache = CRM_Utils_Cache::singleton();
+    $salutation_fields = $cache->get($cacheKey);
+    if (!isset($salutation_fields)) {
+      $salutation_fields =  civicrm_api3('CustomField', 'get', [
+       'return' => "name",
+        'custom_group_id' => "salutations",
+      ]);
+      $cache->set($cacheKey, $salutation_fields);
+    }
     //Check if custom field
     $field_id = (int) substr($field, 7);
 
@@ -440,6 +384,7 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
     $custom_values = civicrm_api3('CustomValue', 'get', [
       'entity_id' => $cid,
       'entity_type' => 'Contact',
+      'return' => ['custom_6', 'custom_7', 'custom_8', 'custom_9'],
     ])['values'];
     // Remove non-numeric return values, they're not real values and can foul results.
     foreach ($custom_values[U::$type_field_id] as $key => $dontcare) {
@@ -452,11 +397,10 @@ function salutations_civicrm_tokenValues(&$values, $cids, $job = null, $tokens =
 
     $salutation = [];
     foreach ($salutations['values'] as $salutation_type) {
-
       $k = array_search($salutation_type['value'], $custom_values[U::$type_field_id]);
 
       if ($k) {
-        $salutation["contact." . $salutation_type['value']] = $custom_values[U::$calculated_salutation_id][$key];
+        $salutation["contact." . $salutation_type['value']] = $custom_values[U::$calculated_salutation_id][$k];
         $values[$cid] = empty($values[$cid]) ? $salutation : $values[$cid] + $salutation;
 
         //If the salutation fields has a corollary core one, set the core greeting token
@@ -487,7 +431,8 @@ function salutations_civicrm_export(&$exportTempTable, &$headerRows, &$sqlColumn
   $result = civicrm_api3('Setting', 'getvalue', array(
     'name' => "salutationExport",
   ));
-  if (!$result) {
+  // Handle both the setting never having been set, and the setting set to "empty".
+  if (!$result || !array_filter(CRM_Utils_Array::explodePadded($result))) {
     return;
   }
   // Make sure we actually have a "civicrm_primary_id" field to join on.
@@ -534,7 +479,7 @@ function salutations_civicrm_export(&$exportTempTable, &$headerRows, &$sqlColumn
 
   CRM_Core_DAO::singleValueQuery($alterTable);
   CRM_Core_DAO::singleValueQuery($sql);
-
+}
 
 // We need to alter API permissions to allow non-administrators to look up custom field values in salutations.js.
 function salutations_civicrm_alterAPIPermissions($entity, $action, &$params, &$permissions) {
@@ -543,7 +488,5 @@ function salutations_civicrm_alterAPIPermissions($entity, $action, &$params, &$p
   ($action == 'getsingle' || $action == 'get') &&
   in_array($params['name'], ['salutation', 'salutation_postal_greeting', 'salutation_type'])) {
     $params['check_permissions'] = FALSE;
-    CRM_Core_Error::debug_var('hey', 'hi');
   }
-}
 }
